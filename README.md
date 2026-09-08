@@ -13,11 +13,11 @@ Production-like Kubernetes 환경을 직접 구축하고, ClickHouse 기반 로�
 
 ## 1차 인프라 구성
 
-| Node | Role | OS | Disk | Network |
-|---|---|---|---:|---|
-| `lab-m` | Control Plane | Rocky Linux 9.5 | 300 GB | `192.168.184.235` |
-| `lab-w1` | Worker | Rocky Linux 9.5 | 300 GB | `192.168.184.163` |
-| `lab-e` | Egress Gateway | Rocky Linux 9.5 | 300 GB | Private `192.168.184.179` / Public `211.47.73.206` |
+| Node | Role | OS | vCPU / Memory | Disk | Network |
+|---|---|---|---|---:|---|
+| `lab-m` | Control Plane | Rocky Linux 9.8 | 4 / 7.5 GiB | 300 GB | `192.168.184.235` |
+| `lab-w1` | Worker | Rocky Linux 9.8 | 8 / 15 GiB | 300 GB | `192.168.184.163` |
+| `lab-e` | Egress Gateway | Rocky Linux 9.8 | 4 / 7.5 GiB | 300 GB | Private `192.168.184.179` / Public `211.47.73.206` |
 
 초기 구성은 VM 3대로 시작하며, 향후 Worker 노드를 추가해 Pod 재스케줄링과 Worker 장애 테스트까지 확장합니다.
 
@@ -28,6 +28,9 @@ Production-like Kubernetes 환경을 직접 구축하고, ClickHouse 기반 로�
                             ^
                             |
                     211.47.73.206
+                OpenStack Floating IP
+                            ^
+                            |
                          lab-e
                   Cilium Egress GW
                     192.168.184.179
@@ -52,21 +55,32 @@ Production-like Kubernetes 환경을 직접 구축하고, ClickHouse 기반 로�
 
 ## 기술 스택
 
-- OS: Rocky Linux 9.5
-- Container Runtime: containerd
-- Kubernetes: kubeadm
-- CNI: Cilium
-- Networking: eBPF, NetworkPolicy, Egress Gateway
+- OS: Rocky Linux 9.8
+- Container Runtime: containerd v2.3.4
+- Kubernetes: v1.36.4 / kubeadm
+- CNI: Cilium v1.20.1
+- Networking: eBPF, kube-proxy replacement, NetworkPolicy, Egress Gateway
 - Logging: Fluent Bit, ClickHouse
 - Visualization: Grafana
 - Application: Python FastAPI
 - AI Analyzer: Python API + LLM API
 - 2차 확장: Kafka, Argo CD, Prometheus
 
+## 네트워크 계획
+
+```text
+Node Network : 192.168.184.0/24
+Pod CIDR     : 10.10.0.0/16
+Service CIDR : 10.96.0.0/12
+API Server   : 192.168.184.235:6443
+```
+
 ## 진행 문서
 
 - [01. Architecture](docs/01-architecture.md)
 - [02. VM / OS Setup](docs/02-vm-os-setup.md)
+- [03. Kubernetes Prerequisites](docs/03-kubernetes-prerequisites.md)
+- [04. Control Plane Bootstrap](docs/04-control-plane-bootstrap.md)
 
 추가 문서는 실제 구축 진행에 맞춰 순차적으로 작성합니다.
 
