@@ -59,7 +59,7 @@ Production-like Kubernetes 환경을 직접 구축하고, ClickHouse 기반 로�
 - Container Runtime: containerd v2.3.4
 - Kubernetes: v1.36.4 / kubeadm
 - CNI: Cilium v1.20.1
-- Networking: eBPF, kube-proxy replacement, NetworkPolicy, Egress Gateway
+- Networking: eBPF, kube-proxy replacement, VXLAN, NetworkPolicy, Egress Gateway
 - Logging: Fluent Bit, ClickHouse
 - Visualization: Grafana
 - Application: Python FastAPI
@@ -70,10 +70,26 @@ Production-like Kubernetes 환경을 직접 구축하고, ClickHouse 기반 로�
 
 ```text
 Node Network : 192.168.184.0/24
-Pod CIDR     : 10.10.0.0/16
+Pod CIDR     : 10.200.0.0/16
 Service CIDR : 10.96.0.0/12
 API Server   : 192.168.184.235:6443
 ```
+
+Cilium cluster-pool IPAM이 `10.200.0.0/16`에서 노드별 `/24` Pod CIDR을 할당한다.
+
+## 현재 진행 상태
+
+- [x] VM 3대 구성
+- [x] Rocky Linux 9.8 설치
+- [x] containerd 2.3.4 설치
+- [x] Kubernetes v1.36.4 설치
+- [x] Control Plane `lab-m` 초기화
+- [x] kube-proxy 미설치 확인
+- [ ] `lab-w1`, `lab-e` Join
+- [ ] Cilium 1.20.1 설치
+- [ ] Egress Gateway 검증
+- [ ] ClickHouse 로그 파이프라인 구축
+- [ ] AI Log Analyzer 구축
 
 ## 진행 문서
 
@@ -81,8 +97,11 @@ API Server   : 192.168.184.235:6443
 - [02. VM / OS Setup](docs/02-vm-os-setup.md)
 - [03. Kubernetes Prerequisites](docs/03-kubernetes-prerequisites.md)
 - [04. Control Plane Bootstrap](docs/04-control-plane-bootstrap.md)
+- [05. Cilium Installation](docs/05-cilium-install.md)
 
-추가 문서는 실제 구축 진행에 맞춰 순차적으로 작성합니다.
+## 구성 파일
+
+- [Cilium values.yaml](kubernetes/cilium/values.yaml)
 
 ## 프로젝트 원칙
 
