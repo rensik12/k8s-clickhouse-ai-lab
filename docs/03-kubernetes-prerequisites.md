@@ -40,14 +40,6 @@ EOF
 
 ```bash
 getent hosts lab-m
-gentent hosts lab-w1
-gentent hosts lab-e
-```
-
-> 실행 시 `gentent`가 아니라 `getent`를 사용한다. 아래 정상 확인 명령을 사용한다.
-
-```bash
-getent hosts lab-m
 getent hosts lab-w1
 getent hosts lab-e
 ```
