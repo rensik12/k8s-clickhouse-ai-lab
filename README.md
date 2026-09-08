@@ -13,43 +13,46 @@ Production-like Kubernetes 환경을 직접 구축하고, ClickHouse 기반 로�
 
 ## 1차 인프라 구성
 
-| Node | Role | 주요 용도 |
-|---|---|---|
-| `k8s-master01` | Control Plane | kube-apiserver, scheduler, controller-manager, etcd |
-| `k8s-worker01` | Worker | Application, ClickHouse, Grafana, Logging workloads |
-| `k8s-egress01` | Egress Gateway | 외부 통신 경로 분리 및 SNAT |
+| Node | Role | OS | Disk | Network |
+|---|---|---|---:|---|
+| `lab-m` | Control Plane | Rocky Linux 9.5 | 300 GB | `192.168.184.235` |
+| `lab-w1` | Worker | Rocky Linux 9.5 | 300 GB | `192.168.184.163` |
+| `lab-e` | Egress Gateway | Rocky Linux 9.5 | 300 GB | Private `192.168.184.179` / Public `211.47.73.206` |
 
-초기 구성은 VM 3대로 시작하며, 향후 `k8s-worker02`를 추가해 Pod 재스케줄링과 Worker 장애 테스트까지 확장합니다.
+초기 구성은 VM 3대로 시작하며, 향후 Worker 노드를 추가해 Pod 재스케줄링과 Worker 장애 테스트까지 확장합니다.
 
 ## 목표 아키텍처
 
 ```text
-                        Internet
-                           ^
-                           |
-                    k8s-egress01
+                         Internet
+                            ^
+                            |
+                    211.47.73.206
+                         lab-e
                   Cilium Egress GW
-                           ^
-                           |
-              EgressGatewayPolicy
-                           |
-        +------------------+------------------+
-        |                                     |
- k8s-master01                         k8s-worker01
- Control Plane                         Workloads
-                                             |
-                           +-----------------+-----------------+
-                           |                 |                 |
-                       Sample App       Fluent Bit         Grafana
-                                             |
-                                         ClickHouse
-                                             |
-                                      AI Log Analyzer
+                    192.168.184.179
+                            ^
+                            |
+               EgressGatewayPolicy
+                            |
+        +-------------------+-------------------+
+        |                                       |
+ lab-m                                     lab-w1
+ Control Plane                             Workloads
+192.168.184.235                         192.168.184.163
+                                                |
+                              +-----------------+-----------------+
+                              |                 |                 |
+                          Sample App       Fluent Bit         Grafana
+                                                |
+                                            ClickHouse
+                                                |
+                                         AI Log Analyzer
 ```
 
 ## 기술 스택
 
-- OS: Linux
+- OS: Rocky Linux 9.5
 - Container Runtime: containerd
 - Kubernetes: kubeadm
 - CNI: Cilium
