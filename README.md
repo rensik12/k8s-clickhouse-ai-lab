@@ -143,11 +143,11 @@ Cilium cluster-pool IPAM이 `10.200.0.0/16`에서 노드별 `/24` Pod CIDR을 �
 - [x] `lab-w1`, `lab-e` Join
 - [x] Cilium 설치
 - [x] 3개 Node Ready 확인
-- [ ] Cilium Egress Gateway 기능 설정값 재검증
-- [ ] `lab-e` 전용 Egress Node label / taint 적용
-- [ ] EgressGatewayPolicy 적용
-- [ ] Pod 외부 통신 Source IP `211.47.73.206` 검증
-- [ ] Egress 장애 시나리오 및 복구 검증
+- [x] Cilium Egress Gateway 기능 및 BPF Egress Map 검증
+- [x] `lab-e` 전용 Egress Node label / taint 적용
+- [x] CiliumEgressGatewayPolicy 적용
+- [x] Pod 외부 통신 Source IP `211.47.73.206` 검증
+- [ ] Egress Gateway 장애 시나리오 및 복구 검증
 
 ### Phase 2. GitLab CI / Helm / ArgoCD
 
@@ -157,7 +157,8 @@ Cilium cluster-pool IPAM이 `10.200.0.0/16`에서 노드별 `/24` Pod CIDR을 �
 - [ ] GitLab CI Runner / Pipeline 구성
 - [ ] Image Registry Push
 - [ ] Source Repo / Deployment Repo 역할 분리
-- [ ] ArgoCD 설치
+- [x] ArgoCD 설치 및 핵심 컴포넌트 Ready 확인
+- [ ] ArgoCD 초기 로그인 / UI 확인
 - [ ] ArgoCD Application 생성
 - [ ] Git 변경 기반 자동 Sync 검증
 - [ ] Live Manifest 임의 변경 후 Drift / Self-Heal 검증
@@ -196,10 +197,13 @@ Cilium cluster-pool IPAM이 `10.200.0.0/16`에서 노드별 `/24` Pod CIDR을 �
 - [04. Control Plane Bootstrap](docs/04-control-plane-bootstrap.md)
 - [05. Cilium Installation](docs/05-cilium-install.md)
 - [06. Interview-oriented Roadmap](docs/06-interview-roadmap.md)
+- [07. Cilium Egress Gateway](docs/07-egress-gateway.md)
+- [08. ArgoCD Installation](docs/08-argocd-install.md)
 
 ## 구성 파일
 
 - [Cilium values.yaml](kubernetes/cilium/values.yaml)
+- [ArgoCD values.yaml](kubernetes/argocd/values.yaml)
 
 ## 프로젝트 원칙
 
