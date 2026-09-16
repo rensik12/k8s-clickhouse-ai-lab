@@ -6,6 +6,10 @@ kubeProxyReplacement: true
 k8sServiceHost: 192.168.184.235
 k8sServicePort: "6443"
 
+# OpenStack VM의 실제 underlay/egress NIC를 명시한다.
+# Egress Gateway는 gateway node의 실제 network-facing interface/IP를 사용한다.
+devices: "eth0"
+
 routingMode: tunnel
 tunnelProtocol: vxlan
 
@@ -14,6 +18,11 @@ bpf:
 
 egressGateway:
   enabled: true
+
+# Lab은 Control Plane 1 / Worker 1 / Egress 1 구조이므로
+# operator HA보다 안정적인 단일 replica 구성을 우선한다.
+operator:
+  replicas: 1
 
 ipam:
   mode: cluster-pool
