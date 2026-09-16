@@ -2,7 +2,7 @@
 
 ## 상태
 
-조사 진행 중
+해결 완료
 
 ## 환경
 
@@ -23,7 +23,7 @@ Floating IP: 211.47.73.206
 kubectl exec egress-test -- curl -4 -s ifconfig.me
 ```
 
-`CiliumEgressGatewayPolicy` 적용 후 동일 명령이 응답 없이 대기한다.
+`CiliumEgressGatewayPolicy` 적용 직후 동일 명령이 응답 없이 대기했다.
 
 ## Egress Policy
 
@@ -48,34 +48,23 @@ spec:
 
 ## 확인 결과
 
-### Pod / Gateway 선택
+### BPF Egress Map
 
-```text
-egress-test
-  Pod IP : 10.200.1.143
-  Node   : lab-w1
-
-lab-e
-  egress-node=true
-```
-
-### lab-w1 Cilium BPF Egress Map
+`lab-w1`:
 
 ```text
 Source IP      Destination CIDR   Egress IP   Gateway IP        Egress Ifindex
 10.200.1.143   0.0.0.0/0          0.0.0.0     192.168.184.179   0
 ```
 
-Source Node에서 Gateway가 `lab-e(192.168.184.179)`로 정상 선택되었다.
-
-### lab-e Cilium BPF Egress Map
+`lab-e`:
 
 ```text
 Source IP      Destination CIDR   Egress IP         Gateway IP        Egress Ifindex
 10.200.1.143   0.0.0.0/0          192.168.184.179   192.168.184.179   2
 ```
 
-Gateway Node에서도 Egress IP와 Interface가 정상 선택되었다.
+정책 selector, Gateway 선택, Egress IP/Interface 선택은 모두 정상이다.
 
 ### lab-e Interface / Routing
 
@@ -84,62 +73,74 @@ ifindex 2 = eth0
 192.168.184.179 -> 1.1.1.1 via 192.168.184.1 dev eth0
 ```
 
-### lab-e tcpdump
+### 실제 패킷 경로
 
-`lab-w1 -> lab-e` 방향의 Egress 테스트 패킷은 관찰되지 않았다.
-
-관찰된 UDP/8472 패킷은 반대 방향인 `lab-e -> lab-w1` Cilium 트래픽이었다.
-
-따라서 현재까지의 증거로는 다음 단계 중 하나에서 문제가 발생하는 것으로 범위를 좁혔다.
+`lab-w1`에서는 테스트 Pod의 외부 패킷이 VXLAN UDP/8472로 `lab-e`에 전달되는 것을 확인했다.
 
 ```text
-Pod
-  -> lab-w1 Cilium Egress Policy match      [정상]
-  -> Gateway lab-e 선택                     [정상]
-  -> lab-w1에서 Gateway 방향 패킷 송신      [확인 필요]
-  -> OpenStack network
-  -> lab-e 수신                             [현재 관찰 안 됨]
-  -> lab-e SNAT / 외부 송신                 [아직 미검증]
+192.168.184.163:<ephemeral> > 192.168.184.179.8472
+inner packet: 10.200.1.143:<ephemeral> > 1.1.1.1.443 SYN
 ```
 
-## 다음 확인
-
-`lab-w1`에서 테스트 요청을 발생시키면서 VXLAN 송신 여부와 Cilium Drop을 확인한다.
-
-```bash
-tcpdump -ni eth0 -nnvv 'udp port 8472 and host 192.168.184.179'
-```
-
-동시에 Cilium Agent에서 Drop monitor를 실행한다.
-
-```bash
-kubectl -n kube-system exec cilium-mjs56 -- cilium-dbg monitor --type drop
-```
-
-다른 터미널에서:
-
-```bash
-kubectl exec egress-test -- curl -k -m 5 https://1.1.1.1/cdn-cgi/trace
-```
-
-### 판단 기준
+`lab-e`에서도 동일 패킷이 수신되고, Cilium이 Pod IP를 Egress Node IP로 SNAT한 뒤 외부로 송신하는 것을 확인했다.
 
 ```text
-1. lab-w1에서 UDP/8472 송신 자체가 없음
-   -> Source Node Cilium datapath / BPF forwarding 확인
-
-2. lab-w1에서는 lab-e 방향 UDP/8472 송신 확인
-   + lab-e에는 도착하지 않음
-   -> OpenStack Security Group / Port Security / Network ACL 확인
-
-3. lab-e까지 도착
-   + eth0 외부 패킷이 없음
-   -> Gateway Node Egress/SNAT datapath 확인
-
-4. lab-e eth0 외부 송신은 있으나 응답 없음
-   -> OpenStack Floating IP / NAT / 외부 Routing 확인
+IN  : 10.200.1.143:<ephemeral> > 1.1.1.1.443
+OUT : 192.168.184.179:<ephemeral> > 1.1.1.1.443
 ```
 
-## 현재 결론
+따라서 Cilium Egress Gateway datapath 자체는 정상 동작했다.
 
-정책 selector와 Gateway 선택은 정상이다. 아직 `lab-w1 -> lab-e` 실제 datapath 구간의 송신/전달 여부가 확인되지 않았으므로 OpenStack 또는 Cilium 중 어느 쪽이 원인이라고 확정하지 않는다.
+## Root Cause
+
+OpenStack Security Group에서 Kubernetes 노드 간 VXLAN 통신에 필요한 `UDP/8472`가 충분히 허용되지 않은 상태였다.
+
+`192.168.184.0/24` 구간의 UDP/8472 통신을 허용한 뒤 Egress Gateway 정책 대상 Pod의 외부 통신이 정상화됐다.
+
+Cilium VXLAN overlay는 노드 간 캡슐화에 UDP/8472를 사용하므로, underlay firewall / Security Group에서 해당 포트를 허용해야 한다.
+
+## 검증 결과
+
+정책 적용 전:
+
+```text
+egress-test -> 211.47.70.204
+```
+
+정책 적용 후:
+
+```bash
+kubectl exec egress-test -- curl -4 -s ifconfig.me ; echo
+```
+
+결과:
+
+```text
+211.47.73.206
+```
+
+최종 경로:
+
+```text
+egress-test Pod (10.200.1.143)
+  -> lab-w1 Cilium
+  -> VXLAN UDP/8472
+  -> lab-e (192.168.184.179)
+  -> Cilium SNAT
+  -> OpenStack Floating IP / NAT
+  -> 211.47.73.206
+```
+
+## 조사 중 잘못된 가설
+
+중간 조사에서 `lab-e`에서 테스트 VXLAN 패킷이 보이지 않아 OpenStack Security Group 또는 VXLAN ingress 차단을 의심했다. 이후 정밀 tcpdump를 통해 일반 Cilium health traffic과 실제 Egress 테스트 패킷을 구분했고, `lab-w1 -> lab-e` VXLAN 및 `lab-e` SNAT 모두 정상 동작하는 것을 확인했다.
+
+또한 테스트 대상으로 사용한 `1.1.1.1:443`은 해당 환경에서 원래 통신이 되지 않는 목적지였으므로, 이 테스트의 timeout만으로 Egress Gateway 장애를 판단하면 안 됐다. 최종 검증에는 정책 적용 전 정상 통신을 확인했던 `ifconfig.me`를 사용했다.
+
+## 배운 점
+
+- Cilium VXLAN overlay 사용 시 노드 간 `UDP/8472` 허용 여부를 사전 점검해야 한다.
+- BPF Egress Map은 정책 매칭과 Gateway 선택을 확인하는 데 유용하다.
+- tcpdump로 outer VXLAN packet과 inner Pod packet을 함께 확인하면 실제 datapath를 단계별로 검증할 수 있다.
+- 네트워크 장애 테스트는 반드시 '원래 정상 통신되는 목적지'를 기준으로 해야 한다.
+- 특정 구간을 의심하더라도 패킷 캡처로 송신/수신/SNAT 단계를 순서대로 검증한 뒤 Root Cause를 확정해야 한다.
