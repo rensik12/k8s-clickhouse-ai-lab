@@ -1,0 +1,17 @@
+# Argo CD lab values
+# Chart: argo/argo-cd 10.9.1
+# AppVersion: v3.5.3
+
+# Cilium lab에서는 GitOps 학습에 집중하기 위해
+# Argo CD chart가 생성하는 NetworkPolicy는 우선 비활성화한다.
+global:
+  networkPolicy:
+    create: false
+
+# 외부 IdP 연동은 후순위. 초기 학습 환경에서는 로컬 admin 계정 사용.
+dex:
+  enabled: false
+
+# Slack/Webhook 알림은 GitOps 기본 흐름 검증 후 추가한다.
+notifications:
+  enabled: false
