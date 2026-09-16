@@ -140,9 +140,10 @@ Cilium cluster-pool IPAM이 `10.200.0.0/16`에서 노드별 `/24` Pod CIDR을 �
 - [x] Kubernetes v1.36.4 설치
 - [x] Control Plane `lab-m` 초기화
 - [x] kube-proxy 미설치 확인
-- [ ] `lab-w1`, `lab-e` Join
-- [ ] Cilium 1.20.1 설치
-- [ ] 3개 Node Ready 확인
+- [x] `lab-w1`, `lab-e` Join
+- [x] Cilium 설치
+- [x] 3개 Node Ready 확인
+- [ ] Cilium Egress Gateway 기능 설정값 재검증
 - [ ] `lab-e` 전용 Egress Node label / taint 적용
 - [ ] EgressGatewayPolicy 적용
 - [ ] Pod 외부 통신 Source IP `211.47.73.206` 검증
